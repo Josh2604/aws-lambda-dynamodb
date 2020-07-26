@@ -1,0 +1,48 @@
+service: lambda-and-dynamo
+
+plugins:
+  - serverless-dynamodb-local
+  - serverless-offline
+
+custom:
+  tableName: "testTable-${self:provider.stage}"
+
+provider:
+  name: aws
+  runtime: nodejs12.0
+  stage: dev
+  region: us-east-1
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource:
+        - { "Fn::GetAtt": ["testTable", "Arn"] }
+  environment:
+    TEST_TABLE: ${self:custom.tableName}
+
+functions:
+  todo-app:
+    handler: index.handler
+    events:
+      - http: ANY /
+      - http: "ANY {proxy+}"
+
+resources:
+  Resources:
+    testTable:
+      Type: "AWS::DynamoDB::Table"
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: testId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: testId
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.tableName}
